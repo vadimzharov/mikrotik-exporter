@@ -1,8 +1,21 @@
-FROM arm64v8/busybox:1.31.0
+FROM golang:1.13 AS builder
 
-EXPOSE 9090
+WORKDIR /usr/src/app
+
+COPY go.mod go.sum ./
+
+RUN go mod download && go mod verify
+COPY . .
+
+RUN go build -v -o /usr/local/bin/mikrotik-exporter
+
+FROM debian:9.9-slim
+
+EXPOSE 9436
 
 COPY scripts/start.sh /app/
-COPY dist/mikrotik-exporter_linux_arm64 /app/mikrotik-exporter
+COPY --from=builder /usr/local/bin/mikrotik-exporter /app/mikrotik-exporter
+
+RUN chmod 755 /app/*
 
 ENTRYPOINT ["/app/start.sh"]
